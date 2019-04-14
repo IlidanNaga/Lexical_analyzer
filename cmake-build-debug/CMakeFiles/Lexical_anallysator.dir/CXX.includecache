@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Analyzer.cpp
+Analyzer.h
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Analyzer.h
+
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Analyzer.h
+Lex.h
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Lex.h
+vector
+-
+fstream
+-
+
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Lex.h
+iostream
+-
+string
+-
+
+C:/Users/maxko/CLionProjects/Lexical_anallysator/main.cpp
+Analyzer.h
+C:/Users/maxko/CLionProjects/Lexical_anallysator/Analyzer.h
+
