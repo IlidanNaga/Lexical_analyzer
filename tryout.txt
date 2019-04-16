@@ -1,0 +1,19 @@
+/* Commentary */
+
+program  /* Commentary */
+{
+int a = 12345, b;
+string c = "abcd";
+
+/* Commentary */
+
+if (sfksrrnwww  > slremssssssssssssss3wa)
+{ read(a); write(c);
+}
+else
+{
+write(a);
+}
+
+
+}

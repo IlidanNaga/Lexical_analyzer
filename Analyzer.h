@@ -8,22 +8,27 @@
 
 class Analyzer {
 private:
-    std::ifstream fin;
+
+    FILE *fin;
+
     status current;
     bool Error_exit;
     std::vector<Lex> table;
+
+    bool Init_flag;
 public:
-    Analyzer (std::string file_name);
+    Analyzer (char * file_name);
 
     char get_next();
 
     void put_back (char c);
-    Lex getlex ();
     void build_table();
     void Shutdown();
 
     void show_table();
 
     Lex new_getlex();
+
+    char skip_spaces(char buff);
 
 };
