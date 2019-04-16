@@ -1,7 +1,7 @@
 #include "Analyzer.h"
 
 Analyzer::Analyzer (char * file_name) {
-    current = Init;
+    current = Null;
     Error_exit = false;
 
 
@@ -29,19 +29,39 @@ void Analyzer::build_table() {
 
         Lex new_lex = new_getlex();
 
-        if (new_lex.show_status() == Error) {
-            flag = false;
-            std::cout << "An error occured" << std::endl;
-        } else if (new_lex.show_status() == End) {
-            flag = false;
-            std::cout << "File ended" << std::endl;
-        } else {
+        status stat = new_lex.show_status();
 
-            if (new_lex.show_status() != Null) {
-                table.push_back(new_lex);
-            }
+        switch (stat) {
+            case Init:
+                if (Init_flag) {
+                    Init_flag = false;
+                } else {
+                    Error_exit = true;
+                    flag = false;
+                    std::cout << "test, we're here";
+                }
+                break;
+            case Error:
+                flag = false;
+                Error_exit = true;
+                break;
+            case End:
+                flag = false;
+                break;
+            case Null:
+                break;
+            default:
+                if (new_lex.show_status() != Null)
+                    table.push_back(new_lex);
+                break;
         }
+
     }
+
+    if (Error_exit) {
+        std::cout << "An error occured during parsing" << std::endl;
+    } else
+        std::cout << "Input file ended, all okay, down you'll get contained \n" << std::endl;
 }
 
 void Analyzer::Shutdown() {
@@ -57,23 +77,24 @@ void Analyzer::show_table() {
 }
 
 char Analyzer::skip_spaces(char buff) {
-    while ((buff == ' ') || (buff == '\n') || (buff == '\t')) {
+    while ((buff == ' ') || (buff == '\n') || (buff == '\t') || (buff == '/')) {
 
         while ((buff == ' ') || (buff == '\n') || (buff == '\t'))
             buff = get_next();
 
         if (buff == '/') {
-            char buff1 = get_next();
-            if (buff1 == '*') {
+            buff = get_next();
+            if (buff == '*') {
                 bool inner_flag = true;
                 while (inner_flag) {
-                    buff1 = get_next();
-                    if (buff1 == '*') {
-                        buff1 = get_next();
-                        if (buff1 == '/')
+                    buff = get_next();
+                    if (buff == '*') {
+                        buff = get_next();
+                        if (buff == '/')
                             inner_flag = false;
                     }
                 }
+                buff = get_next();
             }
         }
 
@@ -93,272 +114,217 @@ Lex Analyzer::new_getlex() {
     buff = skip_spaces(buff);
     if (buff == EOF) {
             //End part
-            std::cout << "Program Analyzis is ended" << std::endl;
             hold_status = End;
     } else {
 
-        if (Init_flag) {
 
-            buff = skip_spaces(buff);
+        switch(current) {
 
-            //commentary or program part
-            if (!isalpha(buff)) {
-                // commentary or error
-                if (buff == '/') {
+            case Commentary: {
+
+                bool comm_flag = true;
+                hold_status = Commentary;
+
+                while (comm_flag) {
+                    hold_data += buff;
                     buff = get_next();
+
                     if (buff == '*') {
-                        Init_flag = true;
-                        current = Null;
+                        char buff1 = get_next();
+                        if (buff1 == '/')
+                            comm_flag = false;
+                        else
+                            put_back(buff1);
+                    }
 
-                        bool comm_flag = true;
-                        hold_status = Commentary;
-
-                        while (comm_flag) {
-                            hold_data += buff;
-                            buff = get_next();
-
-                            if (buff == '*') {
-                                char buff1 = get_next();
-                                if (buff1 == '/')
-                                    comm_flag = false;
-                                else
-                                    put_back(buff1);
-                            }
-
-                            if (buff == EOF) {
-                                comm_flag = false;
-                                hold_status = Error;
-                            }
-                        }
-
-                    } else {
-                        current = Error;
+                    if (buff == EOF) {
+                        comm_flag = false;
                         hold_status = Error;
                     }
                 }
-            } else {
-                // checking, if first word is "program"
+            }
+                break;
+            case Int: {
+                buff = skip_spaces(buff);
+
                 while (isalpha(buff)) {
-                    hold_data += buff;
+                    hold_name += buff;
                     buff = get_next();
                 }
                 put_back(buff);
-                if (hold_data != "program") {
-                    current = Error;
-                    hold_status = Error;
+
+                buff = skip_spaces(buff);
+
+                if (buff == '=') {
+                    hold_status = Const_Int;
+
+                    buff = get_next();
+                    buff = skip_spaces(buff);
+
+                    std::string inner_hold = "";
+
+                    while (isdigit(buff)) {
+
+                        //число собирается нормально
+
+                        hold_value = hold_value * 10 + (buff - '0');
+
+                        buff = get_next();
+
+                    }
+
                 } else {
+                    hold_status = Int;
+                }
+
+                buff = skip_spaces(buff);
+
+                if (buff == ',') {
+                    current = Int;
+                } else if (buff == ';') {
                     current = Null;
-                    hold_status = Null;
-                    Init_flag = false;
+                } else {
+                    // can't be anything else but these 2 symbols
+                    current = Null;
+                    hold_status = Error;
                 }
+            }
+                break;
+            case String: {
+                buff = skip_spaces(buff);
+
+                while (isalpha(buff)) {
+                    hold_name += buff;
+                    buff = get_next();
                 }
-        } else {
+                put_back(buff);
 
-            switch(current) {
+                buff = skip_spaces(buff);
 
-                case Commentary: {
+                if (buff == '=') {
+                    hold_status = Const_Str;
 
-                    bool comm_flag = true;
-                    hold_status = Commentary;
-
-                    while (comm_flag) {
-                        hold_data += buff;
-                        buff = get_next();
-
-                        if (buff == '*') {
-                            char buff1 = get_next();
-                            if (buff1 == '/')
-                                comm_flag = false;
-                            else
-                                put_back(buff1);
-                        }
-
-                        if (buff == EOF) {
-                            comm_flag = false;
-                            hold_status = Error;
-                        }
-                    }
-                }
-                    break;
-                case Int: {
-                    buff = skip_spaces(buff);
-
-                    while (isalpha(buff)) {
-                        hold_name += buff;
-                        buff = get_next();
-                    }
-                    put_back(buff);
+                    buff = get_next();
 
                     buff = skip_spaces(buff);
 
-                    if (buff == '=') {
-                        hold_status = Const_Int;
-
+                    if (buff == '"') {
                         buff = get_next();
-                        buff = skip_spaces(buff);
-
-                        std::string inner_hold = "";
-
-                        while (isdigit(buff)) {
-
-                            //число собирается нормально
-
-                            hold_value = hold_value * 10 + (buff - '0');
-
+                        while (buff != '"') {
+                            hold_data += buff;
                             buff = get_next();
-
                         }
-
                     } else {
-                        hold_status = Int;
-                    }
-
-                    buff = skip_spaces(buff);
-
-                    if (buff == ',') {
-                        current = Int;
-                    } else if (buff == ';') {
-                        current = Null;
-                    } else {
-                        // can't be anything else but these 2 symbols
-                        current = Null;
+                        // no string starting
                         hold_status = Error;
                     }
+
+                    buff = get_next();
+
+                } else {
+                    hold_status = String;
                 }
-                    break;
-                case String: {
-                    buff = skip_spaces(buff);
 
-                    while (isalpha(buff)) {
-                        hold_name += buff;
-                        buff = get_next();
-                    }
-                    put_back(buff);
+                buff = skip_spaces(buff);
 
-                    buff = skip_spaces(buff);
-
-                    if (buff == '=') {
-                        hold_status = Const_Str;
-
-                        buff = get_next();
-
-                        buff = skip_spaces(buff);
-
-                        if (buff == '"') {
-                            buff = get_next();
-                            while (buff != '"') {
-                                hold_data += buff;
-                                buff = get_next();
-                            }
-                        } else {
-                            // no string starting
-                            hold_status = Error;
-                        }
-
-                        buff = get_next();
-
-                    } else {
-                        hold_status = String;
-                    }
-
-                    buff = skip_spaces(buff);
-
-                    if (buff == ',') {
-                        current = String;
-                    } else if (buff == ';') {
-                        current = Null;
-                    } else {
-                        // can't be anything else but these 2 symbols
-                        current = Error;
-                    }
-
+                if (buff == ',') {
+                    current = String;
+                } else if (buff == ';') {
+                    current = Null;
+                } else {
+                    // can't be anything else but these 2 symbols
+                    current = Error;
                 }
-                    break;
-                case Null: {
-                    // default status at a new command after ;
 
-                    buff = skip_spaces(buff);
-
-                    if (isalpha(buff)) {
-                        //a letter
-                        std::string inner_hold = "";
-                        while (isalpha(buff)) {
-                            inner_hold += buff;
-                            buff = get_next();
-                        }
-
-                        put_back(buff);
-                        hold_status = Null;
-                        if (inner_hold == "int") {
-                            current = Int;
-                        } else if (inner_hold == "string") {
-                            current = String;
-                        }  else if (inner_hold == "if") {
-                            current = If;
-                        } else if (inner_hold == "while") {
-                            current = While;
-                        } else if (inner_hold == "read") {
-                            current = Read;
-                        } else if (inner_hold == "write") {
-                            current = Write;
-                        } else if (inner_hold == "else") {
-                            current = Null;
-                            hold_status = Else;
-                        } else {
-                            current = Null;
-                            hold_status = Undeclared;
-                        }
-                    } else {
-                        if (buff == '{') {
-                            current = Null;
-                            hold_status = FB_L;
-                        } else if (buff == '}') {
-                            current = Null;
-                            hold_status = FB_R;
-                        }
-                    }
-
-
-
-
-                }
-                    break;
-                default: {
-                    // default state will work with If, Read, Write, While - all operators, whose commands are inside ()
-
-
-                        buff = skip_spaces(buff);
-
-                        if (buff != '(') {
-                            hold_status = Error;
-                            current = Error;
-                        } else {
-                            hold_status = current;
-
-                            buff = get_next();
-
-                            while(buff != ')') {
-                                hold_data += buff;
-                                buff = get_next();
-                                if (buff == EOF) {
-                                    hold_status = Error;
-                                    current = Error;
-                                    break;
-                                }
-                            }
-                        }
-                        current = Null;
-                        buff = skip_spaces(buff);
-                        if (buff == ';') {
-                            buff = get_next();
-                        }
-
-                }
-                    break;
             }
+                break;
+            case Null: {
+                // default status at a new command after ;
+
+                buff = skip_spaces(buff);
+
+                if (isalpha(buff)) {
+                    //a letter
+                    std::string inner_hold = "";
+                    while (isalpha(buff)) {
+                        inner_hold += buff;
+                        buff = get_next();
+                    }
+
+                    put_back(buff);
+                    hold_status = Null;
+                    if (inner_hold == "int") {
+                        current = Int;
+                    } else if (inner_hold == "string") {
+                        current = String;
+                    } else if (inner_hold == "if") {
+                        current = If;
+                    } else if (inner_hold == "while") {
+                        current = While;
+                    } else if (inner_hold == "read") {
+                        current = Read;
+                    } else if (inner_hold == "write") {
+                        current = Write;
+                    } else if (inner_hold == "else") {
+                        current = Null;
+                        hold_status = Else;
+                    } else if (inner_hold == "program") {
+                        current = Null;
+                        hold_status = Init;
+                    }else {
+                        current = Null;
+                        hold_status = Undeclared;
+                    }
+                } else {
+                    if (buff == '{') {
+                        current = Null;
+                        hold_status = FB_L;
+                    } else if (buff == '}') {
+                        current = Null;
+                        hold_status = FB_R;
+                    }
+                }
 
 
+
+
+            }
+                break;
+            default: {
+                // default state will work with If, Read, Write, While - all operators, whose commands are inside ()
+
+
+                    buff = skip_spaces(buff);
+
+                    if (buff != '(') {
+                        hold_status = Error;
+                        current = Error;
+                    } else {
+                        hold_status = current;
+
+                        buff = get_next();
+
+                        while(buff != ')') {
+                            hold_data += buff;
+                            buff = get_next();
+                            if (buff == EOF) {
+                                hold_status = Error;
+                                current = Error;
+                                break;
+                            }
+                        }
+                    }
+                    current = Null;
+                    buff = skip_spaces(buff);
+                    if (buff == ';') {
+                        buff = get_next();
+                    }
+
+            }
+                break;
         }
+
+
     }
 
     Lex New_lex(hold_status, hold_name, hold_data, hold_value);
